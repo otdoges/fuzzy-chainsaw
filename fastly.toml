@@ -1,0 +1,27 @@
+manifest_version = "3.0"
+name = "openrouter-chatbot"
+description = "OpenRouter Chatbot with Next.js"
+authors = ["Your Name"]
+language = "javascript"
+service_id = "zxnYvwtkGA0LcGWV2SMOw4"
+
+[local_server]
+  [local_server.backends]
+    [local_server.backends.origin]
+      url = "http://localhost:3000"
+
+[scripts]
+  build = "npm run build"
+
+[setup]
+  [setup.env]
+    OPENROUTER_API_KEY = ""
+
+[[routes]]
+  path = "/*"
+  backend = "origin"
+  condition = "true"
+
+[build]
+  [build.env]
+    NODE_ENV = "production"
