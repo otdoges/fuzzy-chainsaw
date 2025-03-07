@@ -14,60 +14,76 @@ export default function CodeEditor({ value, onChange, language = "typescript", r
   const [editor, setEditor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const editorRef = useRef<HTMLDivElement>(null)
+  const monacoRef = useRef<any>(null)
 
   useEffect(() => {
-    let monaco: any
+    let mounted = true
 
     const loadMonaco = async () => {
-      if (!editorRef.current) return  // Add this check
+      if (!editorRef.current) return
       setLoading(true)
 
-      const { default: monacoEditor } = await import("monaco-editor")
-      monaco = monacoEditor
+      try {
+        if (!monacoRef.current) {
+          const monaco = await import("monaco-editor")
+          if (!mounted) return
+          monacoRef.current = monaco
+        }
 
-      const editorInstance = monaco.editor.create(editorRef.current, {  // Use editorRef instead of getElementById
-        value: value,
-        language: language,
-        theme: "vs-dark",
-        automaticLayout: true,
-        minimap: { enabled: false },
-        scrollBeyondLastLine: false,
-        readOnly: readOnly,
-        fontSize: 14,
-        fontFamily: "'Fira Code', monospace",
-        lineNumbers: "on",
-        roundedSelection: true,
-        scrollbar: {
-          useShadows: false,
-          verticalHasArrows: true,
-          horizontalHasArrows: true,
-          vertical: "visible",
-          horizontal: "visible",
-          verticalScrollbarSize: 12,
-          horizontalScrollbarSize: 12,
-        },
-      })
+        if (editor) {
+          editor.dispose()
+        }
 
-      if (!readOnly) {
-        editorInstance.onDidChangeModelContent(() => {
-          if (onChange) {
-            onChange(editorInstance.getValue())
-          }
+        if (!mounted) return
+
+        const editorInstance = monacoRef.current.editor.create(editorRef.current, {
+          value,
+          language,
+          theme: "vs-dark",
+          automaticLayout: true,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          readOnly: readOnly,
+          fontSize: 14,
+          fontFamily: "'Fira Code', monospace",
+          lineNumbers: "on",
+          roundedSelection: true,
+          scrollbar: {
+            useShadows: false,
+            verticalHasArrows: true,
+            horizontalHasArrows: true,
+            vertical: "visible",
+            horizontal: "visible",
+            verticalScrollbarSize: 12,
+            horizontalScrollbarSize: 12,
+          },
         })
-      }
 
-      setEditor(editorInstance)
-      setLoading(false)
+        if (!readOnly && mounted) {
+          editorInstance.onDidChangeModelContent(() => {
+            onChange?.(editorInstance.getValue())
+          })
+        }
+
+        setEditor(editorInstance)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error initializing Monaco editor:", error)
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
 
     loadMonaco()
 
     return () => {
+      mounted = false
       if (editor) {
         editor.dispose()
       }
     }
-  }, [language])
+  }, [value, language, readOnly, onChange, editor])
 
   return (
     <div className="w-full h-full relative">
