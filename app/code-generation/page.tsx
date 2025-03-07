@@ -53,15 +53,19 @@ export default function CodeGeneration() {
           for (const line of lines) {
             if (line.startsWith("data:")) {
               const data = line.slice(5).trim()
-              if (data === "[DONE]") continue
+              if (data === "[DONE]" || !data) continue  // Add empty data check
 
               try {
                 const parsed = JSON.parse(data)
-                const content = parsed.choices[0]?.delta?.content || ""
-                code += content
-                setGeneratedCode(code)
+                const content = parsed.choices?.[0]?.delta?.content || ""
+                if (content) {  // Add content check
+                  code += content
+                  setGeneratedCode(code)
+                }
               } catch (e) {
                 console.error("Error parsing SSE data:", e)
+                // Continue processing even if one chunk fails
+                continue
               }
             }
           }
@@ -69,6 +73,7 @@ export default function CodeGeneration() {
       }
     } catch (error) {
       console.error("Error generating code:", error)
+      setGeneratedCode("Error: Failed to generate code. Please try again.")
     } finally {
       setIsLoading(false)
     }

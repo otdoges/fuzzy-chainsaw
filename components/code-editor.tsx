@@ -13,17 +13,20 @@ interface CodeEditorProps {
 export default function CodeEditor({ value, onChange, language = "typescript", readOnly = false }: CodeEditorProps) {
   const [editor, setEditor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const editorRef = useRef<HTMLDivElement>(null)  // Add this line
+
 
   useEffect(() => {
     let monaco: any
 
     const loadMonaco = async () => {
+      if (!editorRef.current) return  // Add this check
       setLoading(true)
 
       const { default: monacoEditor } = await import("monaco-editor")
       monaco = monacoEditor
 
-      const editorInstance = monaco.editor.create(document.getElementById("monaco-editor-container"), {
+      const editorInstance = monaco.editor.create(editorRef.current, {  // Use editorRef instead of getElementById
         value: value,
         language: language,
         theme: "vs-dark",
@@ -67,14 +70,6 @@ export default function CodeEditor({ value, onChange, language = "typescript", r
     }
   }, [language])
 
-  useEffect(() => {
-    if (editor) {
-      if (editor.getValue() !== value) {
-        editor.setValue(value)
-      }
-    }
-  }, [value, editor])
-
   return (
     <div className="w-full h-full relative">
       {loading && (
@@ -82,7 +77,7 @@ export default function CodeEditor({ value, onChange, language = "typescript", r
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
-      <div id="monaco-editor-container" className="code-editor" />
+      <div ref={editorRef} className="code-editor" />  {/* Add ref here */}
     </div>
   )
 }
