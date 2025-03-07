@@ -1,4 +1,4 @@
-/// <reference types="@fastly/js-compute" />
+
 import { Router } from '@fastly/expressly';
 import { NextServer } from '@fastly/next';
 
