@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"  // Add useRef to imports
 import { Loader2 } from "lucide-react"
 
 interface CodeEditorProps {
@@ -13,8 +13,7 @@ interface CodeEditorProps {
 export default function CodeEditor({ value, onChange, language = "typescript", readOnly = false }: CodeEditorProps) {
   const [editor, setEditor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const editorRef = useRef<HTMLDivElement>(null)  // Add this line
-
+  const editorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let monaco: any

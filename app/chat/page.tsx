@@ -31,7 +31,7 @@ export default function Chat() {
     const userMessage = {
       id: Date.now().toString(),
       role: "user" as const,
-      content: input,
+      content: input.trim(),  // Trim the input before sending
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -46,7 +46,10 @@ export default function Chat() {
         },
         body: JSON.stringify({
           model,
-          messages: [...messages, userMessage].map((m) => ({ role: m.role, content: m.content })),
+          messages: [...messages, userMessage].map((m) => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content.trim() : ''
+          })),
         }),
       })
 
@@ -58,9 +61,8 @@ export default function Chat() {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let assistantMessage = ""
-        const messageId = "temp-" + Date.now().toString()
+        const messageId = Date.now().toString()
 
-        // Add empty assistant message
         setMessages((prev) => [...prev, { id: messageId, role: "assistant", content: "" }])
 
         while (true) {
@@ -73,31 +75,38 @@ export default function Chat() {
           for (const line of lines) {
             if (line.startsWith("data:")) {
               const data = line.slice(5).trim()
-              if (data === "[DONE]") continue
+              if (!data || data === "[DONE]") continue
 
               try {
                 const parsed = JSON.parse(data)
-                const content = parsed.choices[0]?.delta?.content || ""
-                assistantMessage += content
-
-                // Update the assistant message in real-time
-                setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, content: assistantMessage } : m)))
-              } catch (e) {
-                console.error("Error parsing SSE data:", e)
+                const content = parsed.choices?.[0]?.delta?.content || ""
+                if (content) {
+                  assistantMessage += content
+                  setMessages((prev) => 
+                    prev.map((m) => 
+                      m.id === messageId 
+                        ? { ...m, content: assistantMessage } 
+                        : m
+                    )
+                  )
+                }
+              } catch (parseError) {
+                console.error("Error parsing chunk:", parseError, "Raw data:", data)
+                continue
               }
             }
           }
         }
       }
     } catch (error) {
-      console.error("Error sending message:", error)
+      console.error("Error in chat:", error)
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
-        },
+          content: "Sorry, there was an error processing your request. Please try again."
+        }
       ])
     } finally {
       setIsLoading(false)
