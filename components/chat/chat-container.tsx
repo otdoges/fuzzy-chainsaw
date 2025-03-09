@@ -14,6 +14,7 @@ type Message = {
   id: string
   role: "user" | "assistant"
   content: string
+  tps?: number // Add TPS property to messages
 }
 
 export default function ChatContainer() {
@@ -22,6 +23,10 @@ export default function ChatContainer() {
   const [isLoading, setIsLoading] = useState(false)
   const [images, setImages] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Add refs for TPS calculation
+  const tokenCountRef = useRef(0)
+  const startTimeRef = useRef(0)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -32,9 +37,9 @@ export default function ChatContainer() {
     setInput(e.target.value)
   }
 
-  const addMessage = (role: "user" | "assistant", content: string) => {
+  const addMessage = (role: "user" | "assistant", content: string, tps?: number) => {
     const id = Math.random().toString(36).substring(2, 11)
-    setMessages((prev) => [...prev, { id, role, content }])
+    setMessages((prev) => [...prev, { id, role, content, tps }])
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -46,6 +51,10 @@ export default function ChatContainer() {
     setIsLoading(true)
 
     try {
+      // Reset token count and start time for TPS calculation
+      tokenCountRef.current = 0
+      startTimeRef.current = Date.now()
+      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -82,17 +91,27 @@ export default function ChatContainer() {
               try {
                 const parsed = JSON.parse(data)
                 const content = parsed.choices[0]?.delta?.content || ""
+                
+                // Count tokens (roughly estimating 1 token per 4 characters)
+                if (content) {
+                  tokenCountRef.current += content.length / 4
+                }
+                
                 assistantMessage += content
 
-                // Update the assistant message in real-time
+                // Calculate TPS
+                const elapsedSeconds = (Date.now() - startTimeRef.current) / 1000
+                const tps = elapsedSeconds > 0 ? tokenCountRef.current / elapsedSeconds : 0
+                
+                // Update the assistant message in real-time with TPS
                 if (!messages.some((m) => m.role === "assistant" && m.id === "current-response")) {
                   setMessages((prev) => [
                     ...prev,
-                    { id: "current-response", role: "assistant", content: assistantMessage },
+                    { id: "current-response", role: "assistant", content: assistantMessage, tps: parseFloat(tps.toFixed(2)) },
                   ])
                 } else {
                   setMessages((prev) =>
-                    prev.map((m) => (m.id === "current-response" ? { ...m, content: assistantMessage } : m)),
+                    prev.map((m) => (m.id === "current-response" ? { ...m, content: assistantMessage, tps: parseFloat(tps.toFixed(2)) } : m)),
                   )
                 }
               } catch (e) {
@@ -102,10 +121,18 @@ export default function ChatContainer() {
           }
         }
 
-        // Finalize the assistant message with a permanent ID
+        // Calculate final TPS
+        const elapsedSeconds = (Date.now() - startTimeRef.current) / 1000
+        const finalTps = elapsedSeconds > 0 ? tokenCountRef.current / elapsedSeconds : 0
+
+        // Finalize the assistant message with a permanent ID and TPS
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === "current-response" ? { ...m, id: Math.random().toString(36).substring(2, 11) } : m,
+            m.id === "current-response" ? { 
+              ...m, 
+              id: Math.random().toString(36).substring(2, 11),
+              tps: parseFloat(finalTps.toFixed(2))
+            } : m,
           ),
         )
       }

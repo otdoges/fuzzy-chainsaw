@@ -10,6 +10,7 @@ interface ChatMessageProps {
     id: string
     role: "user" | "assistant"
     content: string
+    tps?: number
   }
 }
 
@@ -32,6 +33,13 @@ export default function ChatMessage({ message }: ChatMessageProps) {
       <div className="flex-1 overflow-hidden">
         <div className="prose prose-sm dark:prose-invert">
           <ReactMarkdown>{message.content}</ReactMarkdown>
+          {!isUser && message.tps !== undefined && (
+            <div className="text-xs text-muted-foreground mt-2 flex items-center">
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                {message.tps} tokens/sec
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
